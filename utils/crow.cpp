@@ -14,10 +14,25 @@ crow::~crow() {
 
 }
 
-void crow::collection() {
+void crow::collection(mem_status &mem, cpu_status &cpu, disk_status &disk) {
     _c_cpu();
     _c_memory();
     _c_disk();
+
+    mem.mem_percent = mem_percent;
+    mem.phys_mem_total = phys_mem_total;
+    mem.phys_mem_used = phys_mem_used;
+    mem.phys_mem_free = phys_mem_total - phys_mem_used;
+
+    cpu.cpu_percent = cpu_percent;
+    cpu.cpu_total_idle = cpu_total_idle;
+    cpu.cpu_total_sys = cpu_total_sys;
+    cpu.cpu_total_user = cpu_total_user;
+
+    disk.disk_percent = disk_percent;
+    disk.disk_total = disk_total;
+    disk.disk_used = disk_used;
+    disk.disk_free = disk_free;
 }
 
 void crow::_init() {

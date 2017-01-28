@@ -9,6 +9,27 @@
 #include <sys/statvfs.h>
 #include <sys/sysinfo.h>
 
+struct mem_status {
+    double mem_percent;
+    uint64_t phys_mem_total;
+    uint64_t phys_mem_used;
+    uint64_t phys_mem_free;
+};
+
+struct cpu_status {
+    double cpu_percent;
+    uint64_t cpu_total_user;
+    uint64_t cpu_total_sys;
+    uint64_t cpu_total_idle;
+};
+
+struct disk_status {
+    double disk_percent;
+    uint64_t disk_total;
+    uint64_t disk_used;
+    uint64_t disk_free;
+};
+
 
 class crow {
 public:
@@ -16,7 +37,7 @@ public:
 
     virtual ~crow();
 
-    void collection();
+    void collection(mem_status &mem, cpu_status &cpu, disk_status &disk);
 private:
     // Percent
     double mem_percent;
@@ -29,12 +50,12 @@ private:
     uint64_t phys_mem_used;
     // Value cpu
     uint64_t cpu_last_total_user;
-    uint64_t cpu_total_user;
-    uint64_t cpu_last_total_user_low;
-    uint64_t cpu_total_user_low;
     uint64_t cpu_last_total_sys;
-    uint64_t cpu_total_sys;
+    uint64_t cpu_last_total_user_low;
     uint64_t cpu_last_total_idle;
+    uint64_t cpu_total_user;
+    uint64_t cpu_total_user_low;
+    uint64_t cpu_total_sys;
     uint64_t cpu_total_idle;
     // Value disk
     uint64_t disk_total;

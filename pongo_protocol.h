@@ -9,6 +9,7 @@
 #include <list>
 #include "utils/singleton.h"
 #include "utils/thread_pool.h"
+#include "utils/crow.h"
 
 struct pongo_account {
     std::string id;
@@ -47,6 +48,13 @@ struct pongo_logs {
     std::string str;
 };
 
+
+struct pongo_system_config {
+    mem_status mem;
+    cpu_status cpu;
+    disk_status disk;
+};
+
 class pongo_protocol_account_callback {
 public:
     virtual bool control_account_callback() = 0;
@@ -62,30 +70,37 @@ public:
 
     void set_key(const std::string &key);
 
-    void main_loop(zRPC_caller *caller);
+    void main_loop(zRPC_caller *caller, zRPC_client *client);
 
 private:
     std::string auth(const std::string &key);
 
-    void disconnect(const std::string &session);
+    void disconnect();
 
-    std::string get_config(const std::string &session);
+    std::list<std::string> get_pending_tasks();
 
-    std::list<pongo_account> get_account_list(const std::string &session);
+    std::string get_config(const std::string &account_id);
 
-    void report_logs(const std::string &session, const std::list<pongo_logs> logs);
+    std::list<pongo_account> get_account_list();
 
-    void report_statistics(const std::string &session, const pongo_statistics &statistics);
+    void report_logs(const std::string &account_id,const std::list<pongo_logs> logs);
 
-    void control_tasks(const std::string &session);
+    void report_statistics(const std::string &account_id, const pongo_statistics &statistics);
 
-    void push_tasks(const std::string &session);
+    void report_system_status(const pongo_system_config &system_config);
 
-    void set_do_schduler(const std::string &session, const std::string cron, const std::string &script);
+    void control_tasks();
+
+    void push_tasks();
+
+    void set_do_schduler(const std::string cron, const std::string &script);
 
 private:
     thread_pool pool;
     std::string key;
+    std::string session;
+    zRPC_caller *caller;
+    zRPC_client *client;
 };
 
 

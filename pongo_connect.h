@@ -23,8 +23,16 @@ public:
 
     void main_loop();
 
-    static void connect_callback(pongo_connect *pthis, zRPC_caller_instance *caller_instance, zRPC_call *call,
-                                 zRPC_call_result *result);
+    static void connect_callback(zRPC_filter *filter, zRPC_channel *channel, void *tag);
+
+    static void disconnect_callback(zRPC_filter *filter, zRPC_channel *channel, void *tag);
+
+    static void read_callback(zRPC_filter *filter, zRPC_channel *channel, void *msg, zRPC_filter_out *out,
+                                    void *tag);
+
+    static void write_callback(zRPC_filter *filter, zRPC_channel *channel, void *msg, zRPC_filter_out *out,
+                                    void *tag);
+
     static void control_tasks(pongo_connect *pthis, zRPC_caller_instance *caller_instance, zRPC_call *call,
                               zRPC_call_result *result);
     static void push_tasks(pongo_connect *pthis, zRPC_caller_instance *caller_instance, zRPC_call *call,
