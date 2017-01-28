@@ -22,7 +22,7 @@ void pongo_protocol::main_loop(zRPC_caller *caller, zRPC_client *client) {
         report_system_status(system_status);
         std::list<std::string> pending_work = get_pending_tasks();
         std::for_each(pending_work.begin(), pending_work.end(), [](std::string &work){
-
+            std::cout << work << std::endl;
         });
         sleep(10);
     }
@@ -86,7 +86,7 @@ void pongo_protocol::set_do_schduler(const std::string cron, const std::string &
 std::list<std::string> call_get_pending_tasks(zRPC_caller *caller, zRPC_client *client, const std::string &session) {
     zRPC_call_param *params = (zRPC_call_param *) malloc(sizeof(zRPC_call_param) * 1);
     params[0].name = "session";
-    params[0].value.type = INT64;
+    params[0].value.type = STR;
     params[0].value.str_value.len = session.length();
     char *str = (char *) malloc(session.length() + 1);
     bzero(str, session.length() + 1);
@@ -97,10 +97,13 @@ std::list<std::string> call_get_pending_tasks(zRPC_caller *caller, zRPC_client *
     zRPC_caller_wait_result(caller, &result);
     zRPC_value value;
     zRPC_call_result_get_param(result, "function_ret", &value);
+    std::list<std::string> ret_list;
+    zRPC_call_result_get_param(result, "pending_tasks", &value);
+    for(int i = 0; i < value.array_value.len; ++i) {
+        ret_list.push_back(std::string(value.array_value.value[i].str_value.str));
+    }
     zRPC_caller_destroy_result(caller, result);
     free(params);
-    std::list<std::string> ret_list;
-    ret_list.push_back(std::string(value.str_value.str));
     return ret_list;
 }
 
@@ -108,25 +111,80 @@ std::list<std::string> pongo_protocol::get_pending_tasks() {
     return call_get_pending_tasks(caller, client, session);
 }
 
-std::string call_report_system_status(zRPC_caller *caller, zRPC_client *client, const std::string &session) {
-    zRPC_call_param *params = (zRPC_call_param *) malloc(sizeof(zRPC_call_param) * 1);
+void call_report_system_status(zRPC_caller *caller, zRPC_client *client, const std::string &session,
+                               const pongo_system_config &system_config) {
+    zRPC_call_param *params = (zRPC_call_param *) malloc(sizeof(zRPC_call_param) * 2);
     params[0].name = "session";
-    params[0].value.type = INT64;
+    params[0].value.type = STR;
     params[0].value.str_value.len = session.length();
     char *str = (char *) malloc(session.length() + 1);
     bzero(str, session.length() + 1);
     strcpy(str, session.c_str());
     params[0].value.str_value.str = str;
-    zRPC_caller_do_call(caller, client, "report_system_status", params, 1);
+
+    params[1].name = "mem";
+    params[1].value.type = MAP;
+    params[1].value.map_value.len = 3;
+    params[1].value.map_value.value = (zRPC_map_entry *) malloc(sizeof(zRPC_map_entry) * 3);
+
+    std::string key;
+    params[1].value.map_value.value[0].key = (zRPC_value *) malloc(sizeof(zRPC_value));
+    params[1].value.map_value.value[0].key->type = STR;
+    key = "mem_percent";
+    params[1].value.map_value.value[0].key->str_value.len = key.length();
+    str = (char *) malloc(key.length() + 1);
+    bzero(str, key.length() + 1);
+    strcpy(str, key.c_str());
+    params[1].value.map_value.value[0].key->str_value.str = str;
+    params[1].value.map_value.value[0].value = (zRPC_value *) malloc(sizeof(zRPC_value));
+    params[1].value.map_value.value[0].value->type = FLOAT;
+    params[1].value.map_value.value[0].value->base_value.float_value = system_config.mem.mem_percent;
+
+    params[1].value.map_value.value[1].key = (zRPC_value *) malloc(sizeof(zRPC_value));
+    params[1].value.map_value.value[1].key->type = STR;
+    key = "phys_mem_total";
+    params[1].value.map_value.value[1].key->str_value.len = key.length();
+    str = (char *) malloc(key.length() + 1);
+    bzero(str, key.length() + 1);
+    strcpy(str, key.c_str());
+    params[1].value.map_value.value[1].key->str_value.str = str;
+    params[1].value.map_value.value[1].value = (zRPC_value *) malloc(sizeof(zRPC_value));
+    params[1].value.map_value.value[1].value->type = FLOAT;
+    params[1].value.map_value.value[1].value->base_value.float_value = system_config.mem.phys_mem_total;
+
+    params[1].value.map_value.value[2].key = (zRPC_value *) malloc(sizeof(zRPC_value));
+    params[1].value.map_value.value[2].key->type = STR;
+    key = "phys_mem_used";
+    params[1].value.map_value.value[2].key->str_value.len = key.length();
+    str = (char *) malloc(key.length() + 1);
+    bzero(str, key.length() + 1);
+    strcpy(str, key.c_str());
+    params[1].value.map_value.value[2].key->str_value.str = str;
+    params[1].value.map_value.value[2].value = (zRPC_value *) malloc(sizeof(zRPC_value));
+    params[1].value.map_value.value[2].value->type = FLOAT;
+    params[1].value.map_value.value[2].value->base_value.float_value = system_config.mem.phys_mem_used;
+
+    params[1].value.map_value.value[3].key = (zRPC_value *) malloc(sizeof(zRPC_value));
+    params[1].value.map_value.value[3].key->type = STR;
+    key = "phys_mem_free";
+    params[1].value.map_value.value[3].key->str_value.len = key.length();
+    str = (char *) malloc(key.length() + 1);
+    bzero(str, key.length() + 1);
+    strcpy(str, key.c_str());
+    params[1].value.map_value.value[3].key->str_value.str = str;
+    params[1].value.map_value.value[3].value = (zRPC_value *) malloc(sizeof(zRPC_value));
+    params[1].value.map_value.value[3].value->type = FLOAT;
+    params[1].value.map_value.value[3].value->base_value.float_value = system_config.mem.phys_mem_free;
+
+    zRPC_caller_do_call(caller, client, "report_system_status", params, 2);
     zRPC_call_result *result;
     zRPC_caller_wait_result(caller, &result);
     zRPC_value value;
     zRPC_call_result_get_param(result, "function_ret", &value);
     zRPC_caller_destroy_result(caller, result);
     free(params);
-    return value.str_value.str;
 }
 
 void pongo_protocol::report_system_status(const pongo_system_config &system_config) {
-    call_report_system_status(caller, client, session);
+    call_report_system_status(caller, client, session, system_config);
 }
