@@ -2,8 +2,8 @@
 // Created by zhsyourai on 1/11/17.
 //
 
-#include <rpc/caller.h>
 #include "pongo_protocol.h"
+#include "zRPC/include/support/var_type.h"
 
 pongo_protocol::pongo_protocol() : singleton() {}
 
@@ -31,26 +31,18 @@ void pongo_protocol::main_loop(zRPC_caller *caller, zRPC_client *client) {
 std::string call_auth(zRPC_caller *caller, zRPC_client *client, std::string key, std::string agent_uid) {
     zRPC_call_param *params = (zRPC_call_param *) malloc(sizeof(zRPC_call_param) * 2);
     params[0].name = "key";
-    params[0].value.type = STR;
-    params[0].value.str_value.len = key.length();
-    char *str = (char *) malloc(key.length() + 1);
-    strcpy(str, key.c_str());
-    params[0].value.str_value.str = str;
+    params[0].value = zRPC_type_var_create_base(zRPC_type_base_create(STR, key.c_str()));
 
     params[1].name = "agents_uid";
-    params[1].value.type = STR;
-    params[1].value.str_value.len = agent_uid.length();
-    str = (char *) malloc(agent_uid.length() + 1);
-    strcpy(str, agent_uid.c_str());
-    params[1].value.str_value.str = str;
+    params[1].value = zRPC_type_var_create_base(zRPC_type_base_create(STR, agent_uid.c_str()));
     zRPC_caller_do_call(caller, client, "auth", params, 2);
     zRPC_call_result *result;
     zRPC_caller_wait_result(caller, &result);
-    zRPC_value value;
+    zRPC_value *value;
     zRPC_call_result_get_param(result, "function_ret", &value);
     zRPC_caller_destroy_result(caller, result);
     free(params);
-    return value.str_value.str;
+    return value->base_value->value.str_value.str;
 }
 
 std::string pongo_protocol::auth(const std::string &key) {
@@ -94,21 +86,16 @@ void pongo_protocol::set_do_schduler(const std::string cron, const std::string &
 std::list<std::string> call_get_pending_tasks(zRPC_caller *caller, zRPC_client *client, const std::string &session) {
     zRPC_call_param *params = (zRPC_call_param *) malloc(sizeof(zRPC_call_param) * 1);
     params[0].name = "session";
-    params[0].value.type = STR;
-    params[0].value.str_value.len = session.length();
-    char *str = (char *) malloc(session.length() + 1);
-    bzero(str, session.length() + 1);
-    strcpy(str, session.c_str());
-    params[0].value.str_value.str = str;
+    params[0].value = zRPC_type_var_create_base(zRPC_type_base_create(STR, session.c_str()));
     zRPC_caller_do_call(caller, client, "get_pending_tasks", params, 1);
     zRPC_call_result *result;
     zRPC_caller_wait_result(caller, &result);
-    zRPC_value value;
+    zRPC_value *value;
     zRPC_call_result_get_param(result, "function_ret", &value);
     std::list<std::string> ret_list;
     zRPC_call_result_get_param(result, "pending_tasks", &value);
-    for(int i = 0; i < value.array_value.len; ++i) {
-        ret_list.push_back(std::string(value.array_value.value[i].str_value.str));
+    for(int i = 0; i < value->array_value->len; ++i) {
+        ret_list.push_back(std::string(value->array_value->value[i].str_value.str));
     }
     zRPC_caller_destroy_result(caller, result);
     free(params);
@@ -123,179 +110,60 @@ void call_report_system_status(zRPC_caller *caller, zRPC_client *client, const s
                                const pongo_system_config &system_config) {
     zRPC_call_param *params = (zRPC_call_param *) malloc(sizeof(zRPC_call_param) * 4);
     params[0].name = "session";
-    params[0].value.type = STR;
-    params[0].value.str_value.len = session.length();
-    char *str = (char *) malloc(session.length() + 1);
-    bzero(str, session.length() + 1);
-    strcpy(str, session.c_str());
-    params[0].value.str_value.str = str;
+    params[0].value = zRPC_type_var_create_base(zRPC_type_base_create(STR, session.c_str()));
 
     params[1].name = "mem";
-    params[1].value.type = MAP;
-    params[1].value.map_value.len = 4;
-    params[1].value.map_value.value = (zRPC_map_entry *) malloc(sizeof(zRPC_map_entry) * 4);
+    params[1].value = zRPC_type_var_create_map(4);
 
-    std::string key;
-    params[1].value.map_value.value[0].key = (zRPC_value *) malloc(sizeof(zRPC_value));
-    params[1].value.map_value.value[0].key->type = STR;
-    key = "mem_percent";
-    params[1].value.map_value.value[0].key->str_value.len = key.length();
-    str = (char *) malloc(key.length() + 1);
-    bzero(str, key.length() + 1);
-    strcpy(str, key.c_str());
-    params[1].value.map_value.value[0].key->str_value.str = str;
-    params[1].value.map_value.value[0].value = (zRPC_value *) malloc(sizeof(zRPC_value));
-    params[1].value.map_value.value[0].value->type = FLOAT;
-    params[1].value.map_value.value[0].value->base_value.float_value = system_config.mem.mem_percent;
+    params[1].value->map_value->value[0].key = zRPC_type_base_create(STR, "mem_percent");
+    params[1].value->map_value->value[0].value = zRPC_type_base_create(FLOAT, &system_config.mem.mem_percent);
 
-    params[1].value.map_value.value[1].key = (zRPC_value *) malloc(sizeof(zRPC_value));
-    params[1].value.map_value.value[1].key->type = STR;
-    key = "phys_mem_total";
-    params[1].value.map_value.value[1].key->str_value.len = key.length();
-    str = (char *) malloc(key.length() + 1);
-    bzero(str, key.length() + 1);
-    strcpy(str, key.c_str());
-    params[1].value.map_value.value[1].key->str_value.str = str;
-    params[1].value.map_value.value[1].value = (zRPC_value *) malloc(sizeof(zRPC_value));
-    params[1].value.map_value.value[1].value->type = FLOAT;
-    params[1].value.map_value.value[1].value->base_value.float_value = system_config.mem.phys_mem_total;
+    params[1].value->map_value->value[1].key = zRPC_type_base_create(STR, "phys_mem_total");
+    params[1].value->map_value->value[1].value = zRPC_type_base_create(FLOAT, &system_config.mem.phys_mem_total);
 
-    params[1].value.map_value.value[2].key = (zRPC_value *) malloc(sizeof(zRPC_value));
-    params[1].value.map_value.value[2].key->type = STR;
-    key = "phys_mem_used";
-    params[1].value.map_value.value[2].key->str_value.len = key.length();
-    str = (char *) malloc(key.length() + 1);
-    bzero(str, key.length() + 1);
-    strcpy(str, key.c_str());
-    params[1].value.map_value.value[2].key->str_value.str = str;
-    params[1].value.map_value.value[2].value = (zRPC_value *) malloc(sizeof(zRPC_value));
-    params[1].value.map_value.value[2].value->type = FLOAT;
-    params[1].value.map_value.value[2].value->base_value.float_value = system_config.mem.phys_mem_used;
+    params[1].value->map_value->value[2].key = zRPC_type_base_create(STR, "phys_mem_used");
+    params[1].value->map_value->value[2].value = zRPC_type_base_create(FLOAT, &system_config.mem.phys_mem_used);
 
-    params[1].value.map_value.value[3].key = (zRPC_value *) malloc(sizeof(zRPC_value));
-    params[1].value.map_value.value[3].key->type = STR;
-    key = "phys_mem_free";
-    params[1].value.map_value.value[3].key->str_value.len = key.length();
-    str = (char *) malloc(key.length() + 1);
-    bzero(str, key.length() + 1);
-    strcpy(str, key.c_str());
-    params[1].value.map_value.value[3].key->str_value.str = str;
-    params[1].value.map_value.value[3].value = (zRPC_value *) malloc(sizeof(zRPC_value));
-    params[1].value.map_value.value[3].value->type = FLOAT;
-    params[1].value.map_value.value[3].value->base_value.float_value = system_config.mem.phys_mem_free;
+    params[1].value->map_value->value[3].key = zRPC_type_base_create(STR, "phys_mem_free");
+    params[1].value->map_value->value[3].value = zRPC_type_base_create(FLOAT, &system_config.mem.phys_mem_free);
 
 
     params[2].name = "cpu";
-    params[2].value.type = MAP;
-    params[2].value.map_value.len = 4;
-    params[2].value.map_value.value = (zRPC_map_entry *) malloc(sizeof(zRPC_map_entry) * 4);
+    params[2].value = zRPC_type_var_create_map(4);
 
-    params[2].value.map_value.value[0].key = (zRPC_value *) malloc(sizeof(zRPC_value));
-    params[2].value.map_value.value[0].key->type = STR;
-    key = "cpu_percent";
-    params[2].value.map_value.value[0].key->str_value.len = key.length();
-    str = (char *) malloc(key.length() + 1);
-    bzero(str, key.length() + 1);
-    strcpy(str, key.c_str());
-    params[2].value.map_value.value[0].key->str_value.str = str;
-    params[2].value.map_value.value[0].value = (zRPC_value *) malloc(sizeof(zRPC_value));
-    params[2].value.map_value.value[0].value->type = FLOAT;
-    params[2].value.map_value.value[0].value->base_value.float_value = system_config.cpu.cpu_percent;
+    params[2].value->map_value->value[0].key = zRPC_type_base_create(STR, "cpu_percent");
+    params[2].value->map_value->value[0].value = zRPC_type_base_create(FLOAT, &system_config.cpu.cpu_percent);
 
-    params[2].value.map_value.value[1].key = (zRPC_value *) malloc(sizeof(zRPC_value));
-    params[2].value.map_value.value[1].key->type = STR;
-    key = "cpu_total_user";
-    params[2].value.map_value.value[1].key->str_value.len = key.length();
-    str = (char *) malloc(key.length() + 1);
-    bzero(str, key.length() + 1);
-    strcpy(str, key.c_str());
-    params[2].value.map_value.value[1].key->str_value.str = str;
-    params[2].value.map_value.value[1].value = (zRPC_value *) malloc(sizeof(zRPC_value));
-    params[2].value.map_value.value[1].value->type = FLOAT;
-    params[2].value.map_value.value[1].value->base_value.float_value = system_config.cpu.cpu_total_user;
+    params[2].value->map_value->value[1].key = zRPC_type_base_create(STR, "cpu_total_user");
+    params[2].value->map_value->value[1].value = zRPC_type_base_create(FLOAT, &system_config.cpu.cpu_total_user);
 
-    params[2].value.map_value.value[2].key = (zRPC_value *) malloc(sizeof(zRPC_value));
-    params[2].value.map_value.value[2].key->type = STR;
-    key = "cpu_total_sys";
-    params[2].value.map_value.value[2].key->str_value.len = key.length();
-    str = (char *) malloc(key.length() + 1);
-    bzero(str, key.length() + 1);
-    strcpy(str, key.c_str());
-    params[2].value.map_value.value[2].key->str_value.str = str;
-    params[2].value.map_value.value[2].value = (zRPC_value *) malloc(sizeof(zRPC_value));
-    params[2].value.map_value.value[2].value->type = FLOAT;
-    params[2].value.map_value.value[2].value->base_value.float_value = system_config.cpu.cpu_total_sys;
+    params[2].value->map_value->value[2].key = zRPC_type_base_create(STR, "cpu_total_sys");
+    params[2].value->map_value->value[2].value = zRPC_type_base_create(FLOAT, &system_config.cpu.cpu_total_sys);
 
-    params[2].value.map_value.value[3].key = (zRPC_value *) malloc(sizeof(zRPC_value));
-    params[2].value.map_value.value[3].key->type = STR;
-    key = "cpu_total_idle";
-    params[2].value.map_value.value[3].key->str_value.len = key.length();
-    str = (char *) malloc(key.length() + 1);
-    bzero(str, key.length() + 1);
-    strcpy(str, key.c_str());
-    params[2].value.map_value.value[3].key->str_value.str = str;
-    params[2].value.map_value.value[3].value = (zRPC_value *) malloc(sizeof(zRPC_value));
-    params[2].value.map_value.value[3].value->type = FLOAT;
-    params[2].value.map_value.value[3].value->base_value.float_value = system_config.cpu.cpu_total_idle;
+    params[2].value->map_value->value[3].key = zRPC_type_base_create(STR, "cpu_total_idle");
+    params[2].value->map_value->value[3].value = zRPC_type_base_create(FLOAT, &system_config.cpu.cpu_total_idle);
 
 
     params[3].name = "disk";
-    params[3].value.type = MAP;
-    params[3].value.map_value.len = 4;
-    params[3].value.map_value.value = (zRPC_map_entry *) malloc(sizeof(zRPC_map_entry) * 4);
+    params[3].value = zRPC_type_var_create_map(4);
 
-    params[3].value.map_value.value[0].key = (zRPC_value *) malloc(sizeof(zRPC_value));
-    params[3].value.map_value.value[0].key->type = STR;
-    key = "disk_percent";
-    params[3].value.map_value.value[0].key->str_value.len = key.length();
-    str = (char *) malloc(key.length() + 1);
-    bzero(str, key.length() + 1);
-    strcpy(str, key.c_str());
-    params[3].value.map_value.value[0].key->str_value.str = str;
-    params[3].value.map_value.value[0].value = (zRPC_value *) malloc(sizeof(zRPC_value));
-    params[3].value.map_value.value[0].value->type = FLOAT;
-    params[3].value.map_value.value[0].value->base_value.float_value = system_config.disk.disk_percent;
+    params[3].value->map_value->value[0].key = zRPC_type_base_create(STR, "disk_percent");
+    params[3].value->map_value->value[0].value = zRPC_type_base_create(FLOAT, &system_config.disk.disk_percent);
 
-    params[3].value.map_value.value[1].key = (zRPC_value *) malloc(sizeof(zRPC_value));
-    params[3].value.map_value.value[1].key->type = STR;
-    key = "disk_total";
-    params[3].value.map_value.value[1].key->str_value.len = key.length();
-    str = (char *) malloc(key.length() + 1);
-    bzero(str, key.length() + 1);
-    strcpy(str, key.c_str());
-    params[3].value.map_value.value[1].key->str_value.str = str;
-    params[3].value.map_value.value[1].value = (zRPC_value *) malloc(sizeof(zRPC_value));
-    params[3].value.map_value.value[1].value->type = FLOAT;
-    params[3].value.map_value.value[1].value->base_value.float_value = system_config.disk.disk_total;
+    params[3].value->map_value->value[1].key = zRPC_type_base_create(STR, "disk_total");
+    params[3].value->map_value->value[1].value = zRPC_type_base_create(FLOAT, &system_config.disk.disk_total);
 
-    params[3].value.map_value.value[2].key = (zRPC_value *) malloc(sizeof(zRPC_value));
-    params[3].value.map_value.value[2].key->type = STR;
-    key = "disk_used";
-    params[3].value.map_value.value[2].key->str_value.len = key.length();
-    str = (char *) malloc(key.length() + 1);
-    bzero(str, key.length() + 1);
-    strcpy(str, key.c_str());
-    params[3].value.map_value.value[2].key->str_value.str = str;
-    params[3].value.map_value.value[2].value = (zRPC_value *) malloc(sizeof(zRPC_value));
-    params[3].value.map_value.value[2].value->type = FLOAT;
-    params[3].value.map_value.value[2].value->base_value.float_value = system_config.disk.disk_used;
+    params[3].value->map_value->value[2].key = zRPC_type_base_create(STR, "disk_used");
+    params[3].value->map_value->value[2].value = zRPC_type_base_create(FLOAT, &system_config.disk.disk_used);
 
-    params[3].value.map_value.value[3].key = (zRPC_value *) malloc(sizeof(zRPC_value));
-    params[3].value.map_value.value[3].key->type = STR;
-    key = "disk_free";
-    params[3].value.map_value.value[3].key->str_value.len = key.length();
-    str = (char *) malloc(key.length() + 1);
-    bzero(str, key.length() + 1);
-    strcpy(str, key.c_str());
-    params[3].value.map_value.value[3].key->str_value.str = str;
-    params[3].value.map_value.value[3].value = (zRPC_value *) malloc(sizeof(zRPC_value));
-    params[3].value.map_value.value[3].value->type = FLOAT;
-    params[3].value.map_value.value[3].value->base_value.float_value = system_config.disk.disk_free;
+    params[3].value->map_value->value[3].key = zRPC_type_base_create(STR, "disk_free");
+    params[3].value->map_value->value[3].value = zRPC_type_base_create(FLOAT, &system_config.disk.disk_free);
+
 
     zRPC_caller_do_call(caller, client, "report_system_status", params, 4);
     zRPC_call_result *result;
     zRPC_caller_wait_result(caller, &result);
-    zRPC_value value;
+    zRPC_value *value;
     zRPC_call_result_get_param(result, "function_ret", &value);
     zRPC_caller_destroy_result(caller, result);
     free(params);
