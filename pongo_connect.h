@@ -7,9 +7,10 @@
 
 
 #include <string>
-#include <client.h>
-#include <filter/bytes_filter.h>
-#include <rpc/caller.h>
+#include <zRPC/filter.h>
+#include <zRPC/rpc/call.h>
+#include <zRPC/client.h>
+#include <zRPC/rpc/caller.h>
 #include "utils/thread_pool.h"
 #include "pongo_protocol.h"
 

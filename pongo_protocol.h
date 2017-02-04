@@ -10,8 +10,6 @@
 #include "utils/singleton.h"
 #include "utils/thread_pool.h"
 #include "utils/crow.h"
-#include "zRPC/include/rpc/caller.h"
-#include "zRPC/include/client.h"
 
 struct pongo_account {
     std::string id;

@@ -2,8 +2,9 @@
 // Created by zhsyourai on 1/11/17.
 //
 
+#include <zRPC/support/var_type.h>
+#include <zRPC/rpc/caller.h>
 #include "pongo_protocol.h"
-#include "zRPC/include/support/var_type.h"
 
 pongo_protocol::pongo_protocol() : singleton() {}
 
@@ -24,7 +25,7 @@ void pongo_protocol::main_loop(zRPC_caller *caller, zRPC_client *client) {
         std::for_each(pending_work.begin(), pending_work.end(), [](std::string &work){
             std::cout << work << std::endl;
         });
-        sleep(10);
+        sleep(1);
     }
 }
 
